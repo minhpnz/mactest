@@ -13,11 +13,10 @@ STRESS_SECS=180
 PURCHASE=""
 TMP_DIR=""
 STRESS_PIDS=""
-RESULTS=""
 ISSUES=""
+SUMMARY=""
 SMARTCTL=""
 SP_JSON=""
-REPORT=""
 N_BLOCK=0 N_BAD=0 N_WARN=0 N_OK=0 N_UNKNOWN=0
 MONTHS=""
 STEP=0
@@ -71,10 +70,8 @@ section() {
   local title="$STEP. $1"
   [ "$STEP" -le "$TOTAL_STEPS" ] && title="Bước $STEP/$TOTAL_STEPS · $1"
   printf '\n%s%s%s\n%s%s%s\n' "$C_BLD$C_BLU" "$title" "$C_RST" "$C_DIM" "$(repeat ─ "$WIDTH")" "$C_RST"
-  RESULTS="$RESULTS
-
-$1
-$(repeat ─ "$WIDTH")"
+  SUMMARY="$SUMMARY
+#|$1"
 }
 
 # add STATUS "Tên" "Giá trị" "Giải thích"
@@ -92,14 +89,16 @@ add() {
   [ "$pad" -lt 1 ] && pad=1
   printf ' %s%s%s %s%s%s%s\n' "$color" "$icon" "$C_RST" "$name" "$(repeat ' ' "$pad")" "$C_BLD$value" "$C_RST"
   [ -n "$note" ] && printf '   %s%s%s\n' "$C_DIM" "$note" "$C_RST"
-  RESULTS="$RESULTS
- $icon $name$(repeat ' ' "$pad")$value"
-  [ -n "$note" ] && RESULTS="$RESULTS
-   $note"
   case "$status" in
     BLOCK|BAD|WARN|UNKNOWN)
       ISSUES="$ISSUES
 $status|$name: $value${note:+ → $note}" ;;
+  esac
+  # Bảng tổng hợp: mọi mục có đánh giá, cộng vài thông tin chính
+  case "$status:$name" in
+    INFO:"Dòng máy"|INFO:"Chip"|INFO:"RAM"|INFO:"Chu kỳ mỗi tháng"|INFO:"Tổng dữ liệu đã ghi"|INFO:"Ghi trung bình mỗi năm"|[!I]*)
+      SUMMARY="$SUMMARY
+$status|$name|${value%% (tính từ*}" ;;
   esac
 }
 
@@ -220,7 +219,7 @@ rate_battery_condition() {
   esac
 }
 label_cycles_per_month() {
-  if gt 10 "$1"; then echo "ít dùng pin, có thể hay cắm sạc"
+  if gt 10 "$1"; then echo "ít dùng pin, hay cắm sạc"
   elif ge 20 "$1"; then echo "dùng pin mức vừa"
   else echo "dùng pin thường xuyên"; fi
 }
@@ -662,6 +661,46 @@ run_manual_tests() {
   manual "Lịch sử sửa chữa" "Chip M + macOS 26: System Settings > General > About > Parts & Service (chỉ hiện nếu từng sửa). Không thấy mục đó, hoặc linh kiện ghi Genuine là ổn." BAD
 }
 
+fit() { # fit "chuỗi" độ_rộng: cắt bớt hoặc đệm khoảng trắng cho thẳng cột
+  local text="$1" width="$2"
+  [ "${#text}" -gt "$width" ] && text="${text:0:$((width - 1))}…"
+  printf '%s%s' "$text" "$(repeat ' ' $((width - ${#text})))"
+}
+
+print_summary() {
+  local w1=26 w2=31 w3=12 line status name value label color
+  local top up
+  top="$(repeat ─ $((w1 + 2)))┬$(repeat ─ $((w2 + 2)))┬$(repeat ─ $((w3 + 2)))"
+  up=$(printf '%s' "$top" | sed 's/┬/┴/g')
+  printf '\n %sBảng tổng hợp%s\n' "$C_BLD" "$C_RST"
+  printf '┌%s┐\n' "$top"
+  printf '│ %s%s%s │ %s%s%s │ %s%s%s │\n' "$C_BLD" "$(fit "Mục" $w1)" "$C_RST" "$C_BLD" "$(fit "Kết quả" $w2)" "$C_RST" "$C_BLD" "$(fit "Đánh giá" $w3)" "$C_RST"
+  printf '%s\n' "$SUMMARY" | while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    status="${line%%|*}"
+    line="${line#*|}"
+    if [ "$status" = "#" ]; then
+      printf '├%s┤\n' "$up"
+      printf '│ %s%s%s │\n' "$C_BLD$C_BLU" "$(fit "$line" $((w1 + w2 + w3 + 6)))" "$C_RST"
+      printf '├%s┤\n' "$top"
+      continue
+    fi
+    name="${line%%|*}"
+    value="${line#*|}"
+    case "$status" in
+      BLOCK)   color="$C_RED"; label="Nghiêm trọng" ;;
+      BAD)     color="$C_RED"; label="Có vấn đề" ;;
+      WARN)    color="$C_YEL"; label="Cân nhắc" ;;
+      OK)      color="$C_GRN"; label="Tốt" ;;
+      UNKNOWN) color="$C_YEL"; label="Chưa rõ" ;;
+      *)       color="$C_DIM"; label="-" ;;
+    esac
+    printf '│ %s │ %s │ %s%s%s │\n' "$(fit "$name" $w1)" "$(fit "$value" $w2)" "$color" "$(fit "$label" $w3)" "$C_RST"
+  done
+  printf '└%s┘\n' "$up"
+  printf ' Tốt %s · Cân nhắc %s · Có vấn đề %s · Nghiêm trọng %s · Chưa rõ %s\n' "$N_OK" "$N_WARN" "$N_BAD" "$N_BLOCK" "$N_UNKNOWN"
+}
+
 print_issues() {
   local line status text color icon
   [ -n "$ISSUES" ] || return 0
@@ -685,21 +724,6 @@ print_final_steps() {
   printf ' 2. Tự cài lại có Wi-Fi. Thấy màn hình "Remote Management" thì KHÔNG mua.\n'
   printf ' 3. Chạy Apple Diagnostics: chip M giữ nút nguồn rồi Cmd+D; Intel giữ phím D khi bật.\n'
   printf ' 4. Lấy hoá đơn/giấy bảo hành và thoả thuận đổi trả rõ ràng.\n'
-}
-
-write_report() {
-  local dir="$HOME/Desktop" saved_red="$C_RED" saved_yel="$C_YEL" saved_bld="$C_BLD" saved_rst="$C_RST"
-  [ -d "$dir" ] || dir="$HOME"
-  REPORT="$dir/macbook-report-$(date +%Y%m%d-%H%M).txt"
-  C_RED="" C_YEL="" C_BLD="" C_RST=""
-  {
-    printf 'BÁO CÁO KIỂM TRA MACBOOK - %s\n' "$(date '+%d/%m/%Y %H:%M')"
-    [ -n "$MONTHS" ] && printf 'Tháng mua khai báo: %s (%s tháng)\n' "$PURCHASE" "$MONTHS"
-    printf 'KẾT LUẬN: %s. %s\n' "$(verdict)" "$(verdict_reason)"
-    print_issues
-    printf '%s\n' "$RESULTS"
-  } >"$REPORT"
-  C_RED="$saved_red" C_YEL="$saved_yel" C_BLD="$saved_bld" C_RST="$saved_rst"
 }
 
 main() {
@@ -747,12 +771,12 @@ main() {
     run_stress
   fi
 
-  write_report
+  print_summary
   printf '\n'
   banner "$(verdict_color)" "KẾT LUẬN: $(verdict)" "$(verdict_reason)"
   print_issues
   print_final_steps
-  printf '\n %sBáo cáo đã lưu:%s %s\n\n' "$C_BLD" "$C_RST" "$REPORT"
+  printf '\n'
 }
 
 # Cho phép source file để test các hàm đánh giá

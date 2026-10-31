@@ -13,7 +13,7 @@ curl -fsSL https://raw.githubusercontent.com/minhpnz/mactest/main/check-used-mac
 ```
 
 4. Làm theo hướng dẫn trên màn hình (khoảng 10 phút). Khi được hỏi mật khẩu, nhờ người bán gõ.
-5. Đọc phần **KẾT LUẬN** ở cuối. Báo cáo cũng được lưu ra Desktop.
+5. Đọc **bảng tổng hợp** và phần **KẾT LUẬN** ở cuối màn hình Terminal.
 
 Chỉ có 1 phút? Dùng bản nhanh, bỏ qua phần test tay:
 
@@ -77,7 +77,7 @@ Lỗi khiến script kết luận không nên mua: khoá kích hoạt đang bậ
 - Công cụ đọc SSD (`smartctl`) được tải vào thư mục tạm từ Homebrew, kiểm tra SHA-256, rồi xoá khi xong.
 - Phần test tải nặng chạy CPU hết công suất vài phút, máy sẽ nóng và quạt quay to.
 - Phần duy nhất cần mật khẩu là hỏi Apple xem máy có thuộc tổ chức nào không.
-- Script chỉ để lại một file báo cáo trên Desktop.
+- Kết quả chỉ in ra Terminal, script không để lại file nào trên máy.
 
 ## Trước khi trả tiền
 
