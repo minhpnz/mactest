@@ -27,6 +27,20 @@ Khai sẵn tháng mua để tính mức dùng trung bình:
 curl -fsSL https://raw.githubusercontent.com/minhpnz/mactest/main/check-used-macbook.sh | bash -s -- --date 2024-11
 ```
 
+## Script kiểm tra những gì
+
+| Bước | Nội dung |
+|---|---|
+| 1. Thông tin máy | Dòng máy, năm, chip, RAM, serial; cảnh báo máy Intel và bàn phím butterfly |
+| 2. Khoá và quyền sở hữu | Khoá kích hoạt (Activation Lock), máy thuộc công ty (MDM, có hỏi trực tiếp Apple), Find My, iCloud |
+| 3. Pin | Dung lượng còn lại, số chu kỳ, chu kỳ mỗi tháng, tình trạng Apple đánh giá |
+| 4. SSD | Độ hao mòn, các lỗi, tổng dữ liệu đã ghi, TB/năm |
+| 5. Độ ổn định | Lịch sử sập hệ thống, camera, loa, micro, Wi-Fi, Bluetooth |
+| 6. Test tay | Điểm chết màn hình, từng phím, trackpad, loa, cổng cắm, vỏ máy, lịch sử sửa chữa |
+| 7. Test tải nặng | Chạy CPU hết công suất 3 phút, xem máy có sập nguồn, quá nóng hay tụt pin nhanh không |
+
+Bản `--quick` chỉ chạy bước 1 đến 5 và bỏ qua phần hỏi Apple về MDM.
+
 ## Đọc kết quả
 
 | Ký hiệu | Nghĩa |
@@ -65,8 +79,23 @@ Lỗi khiến script kết luận không nên mua: khoá kích hoạt đang bậ
 - Phần duy nhất cần mật khẩu là hỏi Apple xem máy có thuộc tổ chức nào không.
 - Script chỉ để lại một file báo cáo trên Desktop.
 
+## Trước khi trả tiền
+
+1. Nhờ người bán xoá sạch máy (System Settings > General > Transfer or Reset).
+2. Tự cài lại có Wi-Fi. Thấy màn hình "Remote Management" thì không mua.
+3. Chạy Apple Diagnostics: chip M giữ nút nguồn rồi bấm Cmd+D; Intel giữ phím D khi bật máy.
+4. Lấy hoá đơn hoặc giấy bảo hành và thoả thuận đổi trả rõ ràng.
+
 ## Giới hạn
 
 - Script không thay thế bước xoá máy và cài lại có Internet. Chỉ bước đó mới lộ màn hình Remote Management.
-- Máy vừa bị xoá sẽ mất lịch sử lỗi hệ thống.
+- Máy vừa bị xoá sẽ mất lịch sử lỗi hệ thống, nên kết quả "chưa ghi nhận" lúc đó không có ý nghĩa.
 - Nếu pin hoặc main đã thay, số liệu trung bình theo tuổi máy không còn đúng.
+- Máy không có Internet sẽ không đọc được chi tiết SSD và không hỏi được Apple.
+
+## Tình trạng test
+
+- Đã chạy thử trên MacBook Pro Intel (macOS 26), gồm cả lệnh `curl` từ GitHub.
+- Chưa chạy trên máy chip M thật. Nếu mục SSD hiện `?`, đừng coi là SSD đã đạt; hãy chạy lệnh `smartctl` mà script gợi ý.
+- Bước hỏi Apple về MDM chưa được test với `sudo` thật.
+- Trang test, Photo Booth và giọng đọc mới được test bằng bản giả, chưa mở thật.
